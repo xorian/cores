@@ -359,7 +359,7 @@ extern void usb_init(void);
 #endif
 
 //void init_pins(void)
-void _init_Teensyduino_internal_(void)
+void __attribute__ ((noinline)) _init_Teensyduino_internal_(void)
 {
 	init_pin_interrupts();
 
