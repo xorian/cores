@@ -32,6 +32,8 @@
 #include "core_pins.h"
 #include "HardwareSerial.h"
 
+#ifndef TEENSY3_NO_HWSERIAL1
+
 ////////////////////////////////////////////////////////////////
 // Tunable parameters (relatively safe to edit these numbers)
 ////////////////////////////////////////////////////////////////
@@ -384,4 +386,6 @@ void serial_phex32(uint32_t n)
 	serial_phex(n >> 8);
 	serial_phex(n);
 }
+
+#endif
 

@@ -33,6 +33,12 @@
 
 #include "kinetis.h"
 
+#ifdef TEENSY3_NO_HWSERIAL
+#define TEENSY3_NO_HWSERIAL1
+#define TEENSY3_NO_HWSERIAL2
+#define TEENSY3_NO_HWSERIAL3
+#endif
+
 // uncomment to enable 9 bit formats
 //#define SERIAL_9BIT_SUPPORT
 

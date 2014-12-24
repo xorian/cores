@@ -32,6 +32,8 @@
 #include "core_pins.h"
 #include "HardwareSerial.h"
 
+#ifndef TEENSY3_NO_HWSERIAL3
+
 ////////////////////////////////////////////////////////////////
 // Tunable parameters (relatively safe to edit these numbers)
 ////////////////////////////////////////////////////////////////
@@ -275,4 +277,5 @@ void uart2_status_isr(void)
 	}
 }
 
+#endif
 
