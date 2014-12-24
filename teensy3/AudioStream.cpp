@@ -31,6 +31,7 @@
 
 #include "AudioStream.h"
 
+#ifndef TEENSY3_NO_AUDIOSTREAM
 
 audio_block_t * AudioStream::memory_pool;
 uint32_t AudioStream::memory_pool_available_mask[6];
@@ -241,4 +242,6 @@ void software_isr(void) // AudioStream::update_all()
 	if (totalcycles > AudioStream::cpu_cycles_total_max)
 		AudioStream::cpu_cycles_total_max = totalcycles;
 }
+
+#endif
 

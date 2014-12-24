@@ -33,7 +33,9 @@
 #include "HardwareSerial.h"
 #include "IntervalTimer.h"
 
-#if 1
+#ifndef TEENSY3_NO_TONE
+
+#ifndef TEENSY3_NO_INTERVAL_TIMER
 // IntervalTimer based tone.  This allows tone() to share the timers with other
 // libraries, rather than permanently hogging one PIT timer even for projects
 // which never use tone().  Someday this single-tone implementation might be
@@ -204,11 +206,5 @@ void noTone(uint8_t pin)
 }
 #endif
 
-
-
-
-
-
-
-
+#endif
 

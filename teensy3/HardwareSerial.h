@@ -39,6 +39,8 @@
 #define TEENSY3_NO_HWSERIAL3
 #endif
 
+#ifndef TEENSY3_NO_HWSERIAL
+
 // uncomment to enable 9 bit formats
 //#define SERIAL_9BIT_SUPPORT
 
@@ -243,3 +245,5 @@ extern void serialEvent3(void);
 
 #endif
 #endif
+#endif
+

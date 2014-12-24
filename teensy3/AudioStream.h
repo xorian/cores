@@ -31,6 +31,8 @@
 #ifndef AudioStream_h
 #define AudioStream_h
 
+#ifndef TEENSY3_NO_AUDIOSTREAM
+
 #include "Arduino.h"
 
 #define AUDIO_BLOCK_SAMPLES  128
@@ -145,3 +147,6 @@ private:
 };
 
 #endif
+
+#endif
+

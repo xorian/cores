@@ -21,6 +21,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #ifndef __INTERVALTIMER_H__
 #define __INTERVALTIMER_H__
 
+#ifndef TEENSY3_NO_INTERVAL_TIMER
+
 #include "kinetis.h"
 
 #ifdef __cplusplus
@@ -88,5 +90,7 @@ class IntervalTimer {
 #ifdef __cplusplus
 }
 #endif
+#endif
 
 #endif
+

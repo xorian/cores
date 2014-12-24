@@ -20,6 +20,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #include "IntervalTimer.h"
 
+#ifndef TEENSY3_NO_INTERVAL_TIMER
 
 // ------------------------------------------------------------
 // static class variables need to be reiterated here before use
@@ -183,4 +184,5 @@ void IntervalTimer::stop_PIT() {
   
 }
 
+#endif
 
