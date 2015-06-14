@@ -57,7 +57,16 @@ static uint8_t use9Bits = 0;
 static volatile BUFTYPE tx_buffer[TX_BUFFER_SIZE];
 static volatile BUFTYPE rx_buffer[RX_BUFFER_SIZE];
 static volatile uint8_t transmitting = 0;
-static volatile uint8_t *transmit_pin=NULL;
+#if defined(KINETISK)
+  static volatile uint8_t *transmit_pin=NULL;
+  #define transmit_assert()   *transmit_pin = 1
+  #define transmit_deassert() *transmit_pin = 0
+#elif defined(KINETISL)
+  static volatile uint8_t *transmit_pin=NULL;
+  static uint8_t transmit_mask=0;
+  #define transmit_assert()   *(transmit_pin+4) = transmit_mask;
+  #define transmit_deassert() *(transmit_pin+8) = transmit_mask;
+#endif
 #if TX_BUFFER_SIZE > 255
 static volatile uint16_t tx_buffer_head = 0;
 static volatile uint16_t tx_buffer_tail = 0;
@@ -76,7 +85,7 @@ static volatile uint8_t rx_buffer_tail = 0;
 // UART0 and UART1 are clocked by F_CPU, UART2 is clocked by F_BUS
 // UART0 has 8 byte fifo, UART1 and UART2 have 1 byte buffer
 
-#ifdef KINETISK_UART1_FIFO
+#ifdef HAS_KINETISK_UART1_FIFO
 #define C2_ENABLE		UART_C2_TE | UART_C2_RE | UART_C2_RIE | UART_C2_ILIE
 #else
 #define C2_ENABLE		UART_C2_TE | UART_C2_RE | UART_C2_RIE
@@ -95,10 +104,11 @@ void serial2_begin(uint32_t divisor)
 	transmitting = 0;
 	CORE_PIN9_CONFIG = PORT_PCR_PE | PORT_PCR_PS | PORT_PCR_PFE | PORT_PCR_MUX(3);
 	CORE_PIN10_CONFIG = PORT_PCR_DSE | PORT_PCR_SRE | PORT_PCR_MUX(3);
+#if defined(HAS_KINETISK_UART1)
 	UART1_BDH = (divisor >> 13) & 0x1F;
 	UART1_BDL = (divisor >> 5) & 0xFF;
 	UART1_C4 = divisor & 0x1F;
-#ifdef KINETISK_UART1_FIFO
+#ifdef HAS_KINETISK_UART1_FIFO
 	UART1_C1 = UART_C1_ILT;
 	UART1_TWFIFO = 2; // tx watermark, causes S1_TDRE to set
 	UART1_RWFIFO = 4; // rx watermark, causes S1_RDRF to set
@@ -106,6 +116,11 @@ void serial2_begin(uint32_t divisor)
 #else
 	UART1_C1 = 0;
 	UART1_PFIFO = 0;
+#endif
+#elif defined(HAS_KINETISL_UART1)
+	UART1_BDH = (divisor >> 8) & 0x1F;
+	UART1_BDL = divisor & 0xFF;
+	UART1_C1 = 0;
 #endif
 	UART1_C2 = C2_TX_INACTIVE;
 	NVIC_SET_PRIORITY(IRQ_UART1_STATUS, IRQ_PRIORITY);
@@ -159,6 +174,9 @@ void serial2_set_transmit_pin(uint8_t pin)
 	pinMode(pin, OUTPUT);
 	digitalWrite(pin, LOW);
 	transmit_pin = portOutputRegister(pin);
+	#if defined(KINETISL)
+	transmit_mask = digitalPinToBitMask(pin);
+	#endif
 }
 
 void serial2_putchar(uint32_t c)
@@ -166,7 +184,7 @@ void serial2_putchar(uint32_t c)
 	uint32_t head, n;
 
 	if (!(SIM_SCGC4 & SIM_SCGC4_UART1)) return;
-	if (transmit_pin) *transmit_pin = 1;
+	if (transmit_pin) transmit_assert();
 	head = tx_buffer_head;
 	if (++head >= TX_BUFFER_SIZE) head = 0;
 	while (tx_buffer_tail == head) {
@@ -190,7 +208,7 @@ void serial2_putchar(uint32_t c)
 	UART1_C2 = C2_TX_ACTIVE;
 }
 
-#ifdef KINETISK_UART1_FIFO
+#ifdef HAS_KINETISK_UART1_FIFO
 void serial2_write(const void *buf, unsigned int count)
 {
 	const uint8_t *p = (const uint8_t *)buf;
@@ -198,7 +216,7 @@ void serial2_write(const void *buf, unsigned int count)
         uint32_t head, n;
 
 	if (!(SIM_SCGC4 & SIM_SCGC4_UART1)) return;
-	if (transmit_pin) *transmit_pin = 1;
+	if (transmit_pin) transmit_assert();
 	while (p < end) {
 		head = tx_buffer_head;
 		if (++head >= TX_BUFFER_SIZE) head = 0;
@@ -286,7 +304,7 @@ int serial2_peek(void)
 
 void serial2_clear(void)
 {
-#ifdef KINETISK_UART1_FIFO
+#ifdef HAS_KINETISK_UART1_FIFO
 	if (!(SIM_SCGC4 & SIM_SCGC4_UART1)) return;
 	UART1_C2 &= ~(UART_C2_RE | UART_C2_RIE | UART_C2_ILIE);
 	UART1_CFIFO = UART_CFIFO_RXFLUSH;
@@ -307,7 +325,7 @@ void uart1_status_isr(void)
 {
 	uint32_t head, tail, n;
 	uint8_t c;
-#ifdef KINETISK_UART1_FIFO
+#ifdef HAS_KINETISK_UART1_FIFO
 	uint32_t newhead;
 	uint8_t avail;
 
@@ -338,8 +356,11 @@ void uart1_status_isr(void)
 			head = rx_buffer_head;
 			tail = rx_buffer_tail;
 			do {
-				n = UART1_D;
-				if (use9Bits && (UART1_C3 & 0x80)) n |= 0x100;
+				if (use9Bits && (UART1_C3 & 0x80)) {
+					n = UART1_D | 0x100;
+				} else {
+					n = UART1_D;
+				}
 				newhead = head + 1;
 				if (newhead >= RX_BUFFER_SIZE) newhead = 0;
 				if (newhead != tail) {
@@ -393,7 +414,7 @@ void uart1_status_isr(void)
 #endif
 	if ((c & UART_C2_TCIE) && (UART1_S1 & UART_S1_TC)) {
 		transmitting = 0;
-		if (transmit_pin) *transmit_pin = 0;
+		if (transmit_pin) transmit_deassert();
 		UART1_C2 = C2_TX_INACTIVE;
 	}
 }

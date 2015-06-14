@@ -31,7 +31,9 @@
 #ifndef USBjoystick_h_
 #define USBjoystick_h_
 
-#if defined(USB_HID) || defined(USB_SERIAL_HID)
+#include "usb_desc.h"
+
+#if defined(JOYSTICK_INTERFACE)
 
 #include <inttypes.h>
 
@@ -103,7 +105,7 @@ class usb_joystick_class
 		if (!manual_mode) usb_joystick_send();
 	}
         inline void hat(int dir) {
-                uint32_t val;
+                uint32_t val = 0;
                 if (dir < 0) val = 15;
                 else if (dir < 23) val = 0;
                 else if (dir < 68) val = 1;
@@ -129,6 +131,7 @@ extern usb_joystick_class Joystick;
 
 #endif // __cplusplus
 
-#endif // USB_HID || USB_SERIAL_HID
+#endif // JOYSTICK_INTERFACE
+
 #endif // USBjoystick_h_
 

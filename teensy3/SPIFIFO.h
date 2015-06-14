@@ -3,6 +3,8 @@
 
 #include "avr_emulation.h"
 
+#ifdef KINETISK
+
 #if F_BUS == 60000000
 #define HAS_SPIFIFO
 #define SPI_CLOCK_24MHz   (SPI_CTAR_PBR(1) | SPI_CTAR_BR(0) | SPI_CTAR_DBR) //(60 / 3) * ((1+1)/2) = 20 MHz
@@ -93,7 +95,9 @@
 #define SPI_CLOCK_6MHz    (SPI_CTAR_PBR(0) | SPI_CTAR_BR(0) | SPI_CTAR_DBR) //(4 / 2) * ((1+1)/2) = 1 MHz
 #define SPI_CLOCK_4MHz    (SPI_CTAR_PBR(0) | SPI_CTAR_BR(0) | SPI_CTAR_DBR) //(4 / 2) * ((1+1)/2) = 1 MHz
 
-#endif
+#endif // F_BUS
+
+#endif // KINETISK
 
 /*
 #! /usr/bin/perl
@@ -133,7 +137,7 @@ public:
 		uint32_t p, ctar = speed;
 		SIM_SCGC6 |= SIM_SCGC6_SPI0;
 
-		SPI0.MCR = SPI_MCR_MSTR | SPI_MCR_MDIS | SPI_MCR_HALT | SPI_MCR_PCSIS(0x1F);
+		KINETISK_SPI0.MCR = SPI_MCR_MSTR | SPI_MCR_MDIS | SPI_MCR_HALT | SPI_MCR_PCSIS(0x1F);
 		if (mode & 0x08) ctar |= SPI_CTAR_CPOL;
 		if (mode & 0x04) {
 			ctar |= SPI_CTAR_CPHA;
@@ -141,8 +145,8 @@ public:
 		} else {
 			ctar |= (ctar & 0x0F) << 12;
 		}
-		SPI0.CTAR0 = ctar | SPI_CTAR_FMSZ(7);
-		SPI0.CTAR1 = ctar | SPI_CTAR_FMSZ(15);
+		KINETISK_SPI0.CTAR0 = ctar | SPI_CTAR_FMSZ(7);
+		KINETISK_SPI0.CTAR1 = ctar | SPI_CTAR_FMSZ(15);
 		if (pin == 10) {         // PTC4
 			CORE_PIN10_CONFIG = PORT_PCR_MUX(2);
 			p = 0x01;
@@ -172,8 +176,8 @@ public:
 			p = 0x10;
 		} else {
 			reg = portOutputRegister(pin);
-			*reg = 1;
 			pinMode(pin, OUTPUT);
+			*reg = 1;
 			p = 0;
 		}
 		pcs = p;
@@ -183,16 +187,16 @@ public:
 	inline void write(uint32_t b, uint32_t cont=0) __attribute__((always_inline)) {
 		uint32_t pcsbits = pcs << 16;
 		if (pcsbits) {
-			SPI0.PUSHR = (b & 0xFF) | pcsbits | (cont ? SPI_PUSHR_CONT : 0);
-			while (((SPI0.SR) & (15 << 12)) > (3 << 12)) ; // wait if FIFO full
+			KINETISK_SPI0.PUSHR = (b & 0xFF) | pcsbits | (cont ? SPI_PUSHR_CONT : 0);
+			while (((KINETISK_SPI0.SR) & (15 << 12)) > (3 << 12)) ; // wait if FIFO full
 		} else {
 			*reg = 0;
-			SPI0.SR = SPI_SR_EOQF;
-			SPI0.PUSHR = (b & 0xFF) | (cont ? 0 : SPI_PUSHR_EOQ);
+			KINETISK_SPI0.SR = SPI_SR_EOQF;
+			KINETISK_SPI0.PUSHR = (b & 0xFF) | (cont ? 0 : SPI_PUSHR_EOQ);
 			if (cont) {
-				while (((SPI0.SR) & (15 << 12)) > (3 << 12)) ;
+				while (((KINETISK_SPI0.SR) & (15 << 12)) > (3 << 12)) ;
 			} else {
-				while (!(SPI0.SR & SPI_SR_EOQF)) ;
+				while (!(KINETISK_SPI0.SR & SPI_SR_EOQF)) ;
 				*reg = 1;
 			}
 		}
@@ -200,27 +204,27 @@ public:
 	inline void write16(uint32_t b, uint32_t cont=0) __attribute__((always_inline)) {
 		uint32_t pcsbits = pcs << 16;
 		if (pcsbits) {
-			SPI0.PUSHR = (b & 0xFFFF) | (pcs << 16) |
+			KINETISK_SPI0.PUSHR = (b & 0xFFFF) | (pcs << 16) |
 				(cont ? SPI_PUSHR_CONT : 0) | SPI_PUSHR_CTAS(1);
-			while (((SPI0.SR) & (15 << 12)) > (3 << 12)) ;
+			while (((KINETISK_SPI0.SR) & (15 << 12)) > (3 << 12)) ;
 		} else {
 			*reg = 0;
-			SPI0.SR = SPI_SR_EOQF;
-			SPI0.PUSHR = (b & 0xFFFF) | (cont ? 0 : SPI_PUSHR_EOQ) | SPI_PUSHR_CTAS(1);
+			KINETISK_SPI0.SR = SPI_SR_EOQF;
+			KINETISK_SPI0.PUSHR = (b & 0xFFFF) | (cont ? 0 : SPI_PUSHR_EOQ) | SPI_PUSHR_CTAS(1);
 			if (cont) {
-				while (((SPI0.SR) & (15 << 12)) > (3 << 12)) ;
+				while (((KINETISK_SPI0.SR) & (15 << 12)) > (3 << 12)) ;
 			} else {
-				while (!(SPI0.SR & SPI_SR_EOQF)) ;
+				while (!(KINETISK_SPI0.SR & SPI_SR_EOQF)) ;
 				*reg = 1;
 			}
 		}
 	}
 	inline uint32_t read(void) __attribute__((always_inline)) {
-		while ((SPI0.SR & (15 << 4)) == 0) ;  // TODO, could wait forever
-		return SPI0.POPR;
+		while ((KINETISK_SPI0.SR & (15 << 4)) == 0) ;  // TODO, could wait forever
+		return KINETISK_SPI0.POPR;
 	}
 	inline void clear(void) __attribute__((always_inline)) {
-		SPI0.MCR = SPI_MCR_MSTR | SPI_MCR_PCSIS(0x1F) | SPI_MCR_CLR_TXF | SPI_MCR_CLR_RXF;
+		KINETISK_SPI0.MCR = SPI_MCR_MSTR | SPI_MCR_PCSIS(0x1F) | SPI_MCR_CLR_TXF | SPI_MCR_CLR_RXF;
 	}
 private:
 	static uint8_t pcs;
@@ -228,5 +232,6 @@ private:
 };
 extern SPIFIFOclass SPIFIFO;
 
-#endif
+#endif // HAS_SPIFIFO
+
 #endif

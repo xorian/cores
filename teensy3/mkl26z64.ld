@@ -1,6 +1,6 @@
 /* Teensyduino Core Library
  * http://www.pjrc.com/teensy/
- * Copyright (c) 2013 PJRC.COM, LLC.
+ * Copyright (c) 2014 PJRC.COM, LLC.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -28,62 +28,83 @@
  * SOFTWARE.
  */
 
-#include "WProgram.h"
-#include "usb_desc.h"
-
-#if F_CPU >= 20000000
-
-#ifdef CDC_DATA_INTERFACE
-#ifdef CDC_STATUS_INTERFACE
-usb_serial_class Serial;
-#endif
-#endif
-
-#ifdef MIDI_INTERFACE
-usb_midi_class usbMIDI;
-#endif
-
-#ifdef KEYBOARD_INTERFACE
-usb_keyboard_class Keyboard;
-#endif
-
-#ifdef MOUSE_INTERFACE
-usb_mouse_class Mouse;
-#endif
-
-#ifdef RAWHID_INTERFACE
-usb_rawhid_class RawHID;
-#endif
-
-#ifdef FLIGHTSIM_INTERFACE
-FlightSimClass FlightSim;
-#endif
-
-#ifdef SEREMU_INTERFACE
-usb_seremu_class Serial;
-#endif
-
-#ifdef JOYSTICK_INTERFACE
-usb_joystick_class Joystick;
-uint8_t usb_joystick_class::manual_mode = 0;
-#endif
-
-#ifdef USB_DISABLED
-usb_serial_class Serial;
-#endif
+MEMORY
+{
+	FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 62K
+	RAM  (rwx) : ORIGIN = 0x1FFFF800, LENGTH = 8K
+}
 
 
-#else // F_CPU < 20 MHz
+SECTIONS
+{
+	.text : {
+		. = 0;
+		KEEP(*(.vectors))
+		*(.startup*)
+		/* TODO: does linker detect startup overflow onto flashconfig? */
+		. = 0x400;
+		KEEP(*(.flashconfig*))
+		*(.text*)
+		*(.rodata*)
+		. = ALIGN(4);
+		KEEP(*(.init))
+		. = ALIGN(4);
+		__preinit_array_start = .;
+		KEEP (*(.preinit_array))
+		__preinit_array_end = .;
+		__init_array_start = .;
+		KEEP (*(SORT(.init_array.*)))
+		KEEP (*(.init_array))
+		__init_array_end = .;
+	} > FLASH = 0xFF
 
-#if defined(USB_SERIAL) || defined(USB_SERIAL_HID)
-usb_serial_class Serial;
-#elif (USB_DISABLED)
-usb_serial_class Serial;
-#else
-usb_seremu_class Serial;
-#endif
+	.ARM.exidx : {
+		__exidx_start = .;
+		*(.ARM.exidx* .gnu.linkonce.armexidx.*)
+		__exidx_end = .;
+	} > FLASH
+	_etext = .;
 
-#endif // F_CPU
+	.usbdescriptortable (NOLOAD) : {
+		/* . = ORIGIN(RAM); */
+		. = ALIGN(512);
+		*(.usbdescriptortable*)
+	} > RAM
 
-void serialEvent() __attribute__((weak));
-void serialEvent() {}
+	.dmabuffers (NOLOAD) : {
+		. = ALIGN(4);
+		*(.dmabuffers*)
+	} > RAM
+
+	.usbbuffers (NOLOAD) : {
+		. = ALIGN(4);
+		*(.usbbuffers*)
+	} > RAM
+
+	.data : AT (_etext) {
+		. = ALIGN(4);
+		_sdata = .; 
+		*(.fastrun*)
+		*(.data*)
+		. = ALIGN(4);
+		_edata = .; 
+	} > RAM
+
+	.noinit (NOLOAD) : {
+		*(.noinit*)
+	} > RAM
+
+	.bss : {
+		. = ALIGN(4);
+		_sbss = .; 
+		*(.bss*)
+		*(COMMON)
+		. = ALIGN(4);
+		_ebss = .;
+		__bss_end = .;
+	} > RAM
+
+	_estack = ORIGIN(RAM) + LENGTH(RAM);
+}
+
+
